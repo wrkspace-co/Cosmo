@@ -32,12 +32,14 @@ const app = express()
 const PORT = process.env.PORT || 3000
 
 app.use(cors(corsOptions))
-app.options('*', cors(corsOptions))
+app.options('/{*splat}', cors(corsOptions))
+
 app.use(express.json())
 
 app.use('/download', downloadRoutes)
 app.use('/update', updateRoutes)
 app.use('/api', authMiddleware, apiRoutes)
+app.all('/{*splat}', (req, res) => res.status(404).send('Not Found'))
 
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`)
