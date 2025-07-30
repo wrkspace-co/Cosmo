@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import axios from 'axios'
 import { findNextRelease, tokenHeader } from '../services/github.service'
+import { UAParser } from 'ua-parser-js'
 
 export async function serveChannel(req: Request, res: Response) {
   const { platform, version: clientVersion } = req.params
@@ -44,7 +45,13 @@ export async function serveAsset(req: Request, res: Response) {
     return res.status(404).json({ message: `No update metadata for version ${clientVersion}` })
   }
 
-  const asset = release.assets.find((a) => a.name === file)
+  const parser = new UAParser(req.get('User-Agent') || '')
+  const osName = parser.getOS().name?.toLowerCase() || ''
+  const os = osName === 'darwin' ? 'mac' : osName
+
+  const fileName = file === 'latest.yml' ? `latest-${os}.yml` : file
+  const asset = release.assets.find((a) => a.name === fileName)
+
   if (!asset) {
     return res.status(404).json({ message: `Asset ${file} not found in release` })
   }
