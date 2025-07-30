@@ -8,6 +8,8 @@
   "license": "MIT",
   "scripts": {
     "build": "tsc",
+    "heroku-postbuild": "npm run build",
+    "start": "node dist/app.js",
     "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
     "lint": "eslint \"src/**/*.ts\"",
     "lint:fix": "eslint \"src/**/*.ts\" --fix",
