@@ -4,7 +4,8 @@ import { findNextRelease, tokenHeader } from '../services/github.service'
 
 export async function serveChannel(req: Request, res: Response) {
   const { platform, version: clientVersion } = req.params
-  const release = await findNextRelease(clientVersion)
+  const includePre = req.query.preRelease === 'true' || req.query.preRelease === '1'
+  const release = await findNextRelease(clientVersion, includePre)
 
   if (!release) return res.status(204).end()
 
@@ -36,8 +37,9 @@ export async function serveChannel(req: Request, res: Response) {
  */
 export async function serveAsset(req: Request, res: Response) {
   const { file, version: clientVersion } = req.params
+  const includePre = req.query.preRelease === 'true' || req.query.preRelease === '1'
+  const release = await findNextRelease(clientVersion, includePre)
 
-  const release = await findNextRelease(clientVersion)
   if (!release) {
     return res.status(404).json({ message: `No update metadata for version ${clientVersion}` })
   }
