@@ -1,9 +1,9 @@
 import { Router } from 'express'
-import { serveAsset, serveLatestYml } from '../controllers/update.controller'
+import { serveAsset, serveChannel } from '../controllers/update.controller'
 
 const router = Router()
 
-router.get('/:platform/latest.yml', serveLatestYml)
-router.get('/:platform/:file', serveAsset)
+router.get('/:platform/:version/', serveChannel)
+router.get('/:platform/:version/:file', serveAsset)
 
 export default router

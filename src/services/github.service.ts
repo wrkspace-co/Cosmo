@@ -1,10 +1,15 @@
 import axios from 'axios'
 import { GitHubRelease } from '../types/github'
+import semver from 'semver'
+
+export const tokenHeader = {
+  Authorization: `token ${process.env.GITHUB_TOKEN}`,
+}
 
 const github = axios.create({
   baseURL: 'https://api.github.com',
   headers: {
-    Authorization: `token ${process.env.GITHUB_TOKEN}`,
+    ...tokenHeader,
     Accept: 'application/vnd.github.v3+json',
   },
 })
@@ -17,12 +22,17 @@ export const fetchReleases = async (page = 1, perPage = 10): Promise<GitHubRelea
   return response.data
 }
 
-export const fetchReleaseByTag = async (tag: string) =>
-  (await github.get(`/repos/${process.env.GITHUB_REPO}/releases/tags/${tag}`)).data
+export async function findLastRelease() {
+  const releases = await fetchReleases(1, 1)
+  return releases[0] ?? null
+}
 
-export const fetchAssetDownloadUrl = async (tag: string, assetName: string) => {
-  const release = await fetchReleaseByTag(tag)
-  const asset = release.assets.find((a: any) => a.name === assetName)
-  if (!asset) throw new Error('Asset not found')
-  return asset.browser_download_url
+export async function findNextRelease(clientVersion: string) {
+  const releases = await fetchReleases(1, 100)
+  return (
+    releases.find((rel) => {
+      const tag = rel.tag_name.replace(/^v/, '')
+      return semver.valid(tag) && semver.valid(clientVersion) && semver.gt(tag, clientVersion)
+    }) || null
+  )
 }

@@ -1,17 +1,23 @@
-import os from 'os'
 import { Request, Response } from 'express'
-import { fetchReleaseByTag } from '../services/github.service'
+import { UAParser } from 'ua-parser-js'
+import { findLastRelease } from '../services/github.service'
 
-export const handleDownload = async (_req: Request, res: Response) => {
-  const platform = os.platform()
-  const arch = os.arch()
-  const ext = platform === 'darwin' ? 'dmg' : platform === 'win32' ? 'exe' : 'AppImage'
-  const tag = 'latest'
-  const release = await fetchReleaseByTag(tag)
-  const filename = `YourApp-${platform}-${arch}.${ext}`
-  const asset = release.assets.find((a: any) => a.name === filename)
+export const handleDownload = async (req: Request, res: Response) => {
+  const ua = UAParser(req.get('User-Agent') || '')
+  const osName = ua.os.name?.toLowerCase() || ''
+  const arch = ua.cpu.architecture || ''
 
-  if (!asset) return res.status(404).json({ message: 'Installer not found' })
+  const ext = osName.includes('mac') ? 'dmg' : osName.includes('windows') ? 'exe' : 'AppImage'
+  const release = await findLastRelease()
+
+  if (!release) return res.status(404).json({ message: 'No releases found' })
+
+  const asset = release.assets.find(
+    (a) =>
+      a.name.toLowerCase().includes(arch.toLowerCase()) && a.name.toLowerCase().endsWith(`.${ext}`),
+  )
+
+  if (!asset) return res.status(404).json({ message: `No installer for ${osName}/${arch}` })
 
   res.redirect(asset.browser_download_url)
 }

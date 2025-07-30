@@ -6,4 +6,3 @@ const router = Router()
 router.get('/', handleDownload)
 
 export default router
- 

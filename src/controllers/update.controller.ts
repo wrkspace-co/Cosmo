@@ -1,34 +1,59 @@
-import { Request, Response } from 'express';
-import { fetchReleaseByTag, fetchAssetDownloadUrl } from '../services/github.service';
-import axios from 'axios';
+import { Request, Response } from 'express'
+import axios from 'axios'
+import { findNextRelease, tokenHeader } from '../services/github.service'
 
-export const serveLatestYml = async (req: Request, res: Response) => {
-  const tag = 'latest'
-  const release = await fetchReleaseByTag(tag);
-  const asset = release.assets.find((a: any) => a.name.endsWith('.yml'));
-  if (!asset) return res.status(404).json({ message: 'latest.yml not found' });
+export async function serveChannel(req: Request, res: Response) {
+  const { platform, version: clientVersion } = req.params
+  const release = await findNextRelease(clientVersion)
 
-  const url = asset.browser_download_url; 
-  const stream = await axios.get(url, {
-    headers: { Authorization: `token ${process.env.GITHUB_TOKEN}` },
-    responseType: 'stream', 
-  });
+  if (!release) return res.status(204).end()
 
-  stream.data.pipe(res);
-};
+  const pfMap: Record<string, string> = {
+    darwin: 'mac',
+    win32: 'windows',
+    linux: 'linux',
+  }
+  const pfKey = pfMap[platform]
+  const yamlAsset = release.assets.find((a) => a.name.endsWith('.yml') && a.name.includes(pfKey))
 
-export const serveAsset = async (req: Request, res: Response) => {
-  const { platform, file } = req.params;
-  // asset name might include platform/version/file
-  const tag = 'latest'; // or use version from file path
-  const release = await fetchReleaseByTag(tag);
-  const asset = release.assets.find((a: any) => a.name === file);
-  if (!asset) return res.status(404).json({ message: 'Asset not found' });
-  const url = asset.browser_download_url;
+  if (!pfKey) return res.status(400).json({ message: `Unsupported platform: ${platform}` })
+  if (!yamlAsset) return res.status(404).json({ message: 'Channel YAML not found' })
 
-  const stream = await axios.get(url, {
-    headers: { Authorization: `token ${process.env.GITHUB_TOKEN}` },
+  const apiAssetUrl = yamlAsset.url
+  const response = await axios.get(apiAssetUrl, {
+    headers: {
+      ...tokenHeader,
+      Accept: 'application/octet-stream',
+    },
     responseType: 'stream',
-  });
-  stream.data.pipe(res);
-};
+  })
+
+  response.data.pipe(res)
+}
+
+/**
+ * Serves binary or blockmap assets referenced in the YAML.
+ */
+export async function serveAsset(req: Request, res: Response) {
+  const { file, version: clientVersion } = req.params
+
+  const release = await findNextRelease(clientVersion)
+  if (!release) {
+    return res.status(404).json({ message: `No update metadata for version ${clientVersion}` })
+  }
+
+  const asset = release.assets.find((a) => a.name === file)
+  if (!asset) {
+    return res.status(404).json({ message: `Asset ${file} not found in release` })
+  }
+
+  const response = await axios.get(asset.url, {
+    headers: {
+      ...tokenHeader,
+      Accept: 'application/octet-stream',
+    },
+    responseType: 'stream',
+  })
+
+  response.data.pipe(res)
+}
