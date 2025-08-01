@@ -9,19 +9,30 @@ import updateRoutes from './routes/update.route'
 import apiRoutes from './routes/api.route'
 import { authMiddleware } from './middlewares/auth.middleware'
 
-// Define the whitelist of allowed origins
-const allowedOrigins = ['https://wrkspace.co', 'https://staging.wrkspace.co']
-
 // CORS options
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (e.g. mobile apps or curl)
-    if (!origin) return callback(null, true)
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true)
-    } else {
-      callback(new Error('Not allowed by CORS'))
+    // allow tools like curl / mobile apps
+    if (!origin) {
+      return callback(null, true)
     }
+
+    try {
+      const hostname = new URL(origin).hostname
+      // allow any *.wrkspace.co
+      if (
+        hostname.endsWith('.wrkspace.co') ||
+        hostname === 'wrkspace.co' ||
+        hostname === 'localhost' ||
+        hostname === '127.0.0.1'
+      ) {
+        return callback(null, true)
+      }
+    } catch {
+      // malformed origin—block it
+    }
+
+    callback(new Error('Not allowed by CORS'))
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
