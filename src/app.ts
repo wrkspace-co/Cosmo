@@ -35,6 +35,10 @@ app.use(cors(corsOptions))
 app.options('/{*splat}', cors(corsOptions))
 
 app.use(express.json())
+app.use((req, res, next) => {
+  res.setHeader('Accept-Ranges', 'bytes')
+  next()
+})
 
 app.use('/download', downloadRoutes)
 app.use('/update', updateRoutes)
