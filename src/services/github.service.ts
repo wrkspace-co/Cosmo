@@ -6,7 +6,7 @@ export const tokenHeader = {
   Authorization: `token ${process.env.GITHUB_TOKEN}`,
 }
 
-const github = axios.create({
+export const github = axios.create({
   baseURL: 'https://api.github.com',
   headers: {
     ...tokenHeader,
