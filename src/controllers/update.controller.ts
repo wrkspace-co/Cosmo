@@ -1,7 +1,6 @@
 import { Request, Response } from 'express'
 import axios from 'axios'
-import { findNextRelease, tokenHeader } from '../services/github.service'
-import { UAParser } from 'ua-parser-js'
+import { findLastRelease, findNextRelease, tokenHeader } from '../services/github.service'
 
 export async function serveChannel(req: Request, res: Response) {
   const { platform, version: clientVersion } = req.params
@@ -37,13 +36,9 @@ export async function serveChannel(req: Request, res: Response) {
  * Serves binary or blockmap assets referenced in the YAML.
  */
 export async function serveAsset(req: Request, res: Response) {
-  const { file, version: clientVersion } = req.params
+  const { file } = req.params
   const includePre = req.query.preRelease === 'true' || req.query.preRelease === '1'
-  const release = await findNextRelease(clientVersion, includePre)
-
-  if (!release) {
-    return res.status(404).json({ message: `No update metadata for version ${clientVersion}` })
-  }
+  const release = await findLastRelease(includePre)
 
   const asset = release.assets.find((a) => a.name === file)
 
